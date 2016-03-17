@@ -1,62 +1,83 @@
-height=143;
-width=98;
-depth=10;
-widthOffset=width/2;
-heightOffset=43;
-index=width/10;
+height=135; //height of speaker
+width=90;   //width of speaker
+depth=10;   //how much does the front panel add depth
+speakerWidthOffset=width/2;    //horizonal position of speaker
+speakerHeightOffset=51; //vertical position of speaker
+speakerHeight=5.6;  //depth of speaker from front panel
+speakerRadius=90/2; //radius of speaker
+gridIndex=(width+8)/3;  //density of mesh
+walls=4;    //the thickness of the surrounding walls
+overlap=10; //how much to go over the enclosure
+part="all"; //what to print
 
-radius=sqrt(pow(widthOffset,2)+pow(height-heightOffset,2));
-offSet=(pow(radius,2)-pow(depth,2))/(2*depth);
-bigRadius=offSet+depth;
-$fn=100;
+//do not touch
+radius=sqrt(pow(speakerWidthOffset,2)+pow(height-speakerHeightOffset,2)); //height/width radius of curve
+offSet=(pow(radius,2)-pow(depth,2))/(2*depth); //position of sphere
+bigRadius=offSet+depth; //radius of sphere
+$fn=64;
 
-echo(offSet,bigRadius);
-
-difference()
+intersection()  //prepare for printing
 {
-    intersection()
+    difference()    //add cutouts
     {
-        //rounded shape
-        translate([0,0,-offSet])
-            sphere(bigRadius);
-        //remove excess material
-        translate([-width+widthOffset+4,-height+heightOffset+4,0])
-            minkowski()
-                {
-                    cube([width-8,height-8,depth]);
-                    cylinder(depth,4,4);
-                }
-        union()
+        intersection()  //generate main shape
         {
-            //grid
-            linear_extrude(depth)
-                difference()
-                {
-                    circle(radius);
-                    for(a = [-4:4])
-                        for(b = [-20:20])
-                            translate([a*index,b*index*0.575,0])
-                                if(!(a+b)%2)
-                                    circle(index*0.57, $fn=6);
-                }
+            //rounded shape
+            translate([0,0,-offSet])
+                sphere(bigRadius,$fn=200);
+            //remove excess material
+            translate([-width+speakerWidthOffset,-height+speakerHeightOffset,-overlap])
+                minkowski()
+                    {
+                        cube([width,height,depth]);
+                        cylinder(depth+overlap,walls,walls);
+                    }
+            union()
+            {
+                //grid
+                linear_extrude(depth)
+                    difference()
+                    {
+                        circle(radius);
+                        for(a = [-4:4])
+                            for(b = [-20:20])
+                                translate([a*gridIndex,b*gridIndex*0.575,0])
+                                    if(!(a+b)%2)
+                                        circle(gridIndex*0.57, $fn=6);
+                    }
                 //rounded borders
-                translate([-widthOffset+4,-height+heightOffset+4,0])
-                difference()
-                {
-                    minkowski()
+                translate([-speakerWidthOffset,-height+speakerHeightOffset,-overlap+walls])
+                    difference()
                     {
-                        cube([width-8,height-8,depth]);
-                        cylinder(depth,4,4);
+                        minkowski()
+                        {
+                            cube([width,height,depth+overlap]);
+                            sphere(walls);
+                        }
+                        translate([walls,walls,-walls])
+                        minkowski()
+                        {
+                            cube([width-walls*2,height-walls*2,depth+overlap]);
+                            cylinder(depth+overlap,walls,walls);
+                        }
                     }
-                    translate([4,4,0])
-                    minkowski()
-                    {
-                        cube([width-16,height-16,depth]);
-                        cylinder(depth,4,4);
-                    }
-                }
-        }        
+            }        
+        }
+        //space for speaker element
+        cylinder(speakerHeight,r=speakerRadius);
     }
-    //space for speaker element
-    cylinder(5.6,85/2,85/2);
+    if(part=="frame")
+        difference()
+        {
+            translate([-width+speakerWidthOffset,-height+speakerHeightOffset,0])
+                cube([width,height,depth]);
+            translate([-speakerRadius,-speakerRadius,speakerHeight])
+                cube([speakerRadius*2,speakerRadius*2,depth-speakerHeight]);
+        }
+    if(part=="speaker")
+        translate([-speakerRadius,-speakerRadius,speakerHeight])
+            cube([speakerRadius*2,speakerRadius*2,depth-speakerHeight]);
+    if(part=="overlap")
+        translate([-width+speakerWidthOffset,-height+speakerHeightOffset,-overlap])
+            cube([width,height,overlap]);
 }
